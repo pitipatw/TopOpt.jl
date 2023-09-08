@@ -27,7 +27,7 @@ begin
 
     Ee(x::Float64) = x^η*ΔE + Etimber
     ρe(x::Float64) = x^η*Δρ + ρtimber
-    ρECCe(x::Float64) = x^η*ΔρECC + ρECCCtimber
+    ρECCe(x::Float64) = x^η*ΔρECC + ρECCtimber
     σmin(x::Float64) = x^η*Δσmin + tmin
     σmax(x::Float64) = x^η*Δσmax + tmax
     
@@ -59,14 +59,14 @@ problem = TrussProblem(
     Val{:Linear}, node_points, elements, loads, fixities, mats, crosssecs
 )
 
-L = Vector{Float64}(undef, length(elements))
+le = Vector{Float64}(undef, length(elements))
 #get list of length
 for e in keys(elements)
     p1 = elements[e][1]
     p2 = elements[e][2]
     (x1,y1) = node_points[p1]
     (x2,y2) = node_points[p2]
-    L[e] = norm([x1 y1] - [x2 y2])
+    le[e] = norm([x1 y1] - [x2 y2])
 end
 
 xmin = 0.0001 # minimum density
@@ -78,11 +78,9 @@ solver = FEASolver(Direct, problem; xmin=xmin)
 comp = TopOpt.Compliance(solver)
 
 ts = TopOpt.TrussStress(solver)
+
 function truss_stress(x)
-    ae = x[1:ncells]
-    xe = x[ncells+1:]
-    ee = Ee.(xe)
-    σ = ts(ae.*ee)
+    σ = ts(PseudoDensities(x))
     return σ
 end
 
@@ -91,38 +89,42 @@ end
 #     Ae = x[:,1]
 #     return comp(PseudoDensities(Ae))
 # end
-function constr1(x)
-    # volume fraction constraint
-    ae = x[1:ncells]
-    xe = x[ncells+1:]
-
-    return sum(ae.*L) / sum(L) - V
-end
+# function constr1(x)
+#     # volume fraction constraint
+#     ae = x[1:ncells]
+#     return sum(ae.*le) / sum(le) - V
+# end
 
 function constr2_min(x)
-    Xe = x[:,2]
-    min = σmax.(Xe)
-    σ = truss_stress(x)
+    ae = x[1:ncells]
+    xe = x[ncells+1:end]
+    min = σmax.(xe)
+
+    σ = truss_stress(ae.*xe)
     return σ .- min
 end
 
 function constr2_max(x)
-    Xe = x[:,2]
-    max = σmax.(Xe)
-    σ = truss_stress(x)
+   println(ncells)
+   println(size(x))
+    local ae = x[1:ncells]
+    local xe = x[ncells+1:end]
+    aexe = ae.*xe
+    max = σmax.(xe)
+    σ = truss_stress(ae.*xe)
     return σ.-max
 end
 
 function obj(x)
-    ae = x[:,1]
-    xe = x[:,2]
+    ae = x[1:ncells]
+    xe = x[ncells+1:end]
     ρecc = ρECCe.(xe)
     return sum( ae.*le.*ρecc) 
 end
 
 m = Model(obj)
 addvar!(m, zeros(length(x0)), ones(length(x0)))
-Nonconvex.add_ineq_constraint!(m, constr1)
+# Nonconvex.add_ineq_constraint!(m, constr1)
 Nonconvex.add_ineq_constraint!(m, constr2_min)
 Nonconvex.add_ineq_constraint!(m, constr2_max)
 
