@@ -1,4 +1,4 @@
-module TrussComplianceDemo2D1
+# module TrussComplianceDemo2D1
 
 using TopOpt, LinearAlgebra, StatsFuns
 #using Makie, GLMakie
@@ -53,4 +53,4 @@ TopOpt.setpenalty!(solver, p)
 #)
 #Makie.display(fig)
 
-end
+# end
