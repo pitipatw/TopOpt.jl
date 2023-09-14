@@ -72,14 +72,20 @@ end
 #             = - K^-1 * [d(ρ_e)/d(x_e) * K_e * u]
 # d(u)/d(x_e)' * Δ = -d(ρ_e)/d(x_e) * u' * K_e * (K^-1 * Δ)
 # """
-# function ChainRulesCore.rrule(dp::TrussStress, x)
-#     @unpack dudx_tmp, solver, global_dofs = dp
-#     @unpack penalty, problem, u, xmin = solver
-#     dh = getdh(problem)
-#     @unpack Kes = solver.elementinfo
-#     # Forward-pass
-#     # Cholesky factorisation
-#     u = dp(x)
+function ChainRulesCore.rrule(
+    ts::TrussStress, x::PseudoDensities)
+    @unpack σ, transf_matrices, u_fn = ts
+    @unpack global_dofs, solver = u_fn
+    @unpack penalty, problem, xmin = solver
+    @unpack Kes = solver.elementinfo
+    u = ts(x)
+    dh = getdh(problem)
+    
+    # Forward-pass
+    # Cholesky factorisation
+    
+    function pullback(Δ)
+        Δts = Vector{Float64}(undef, length(σ))
 #     return u, Δ -> begin # v
 #         solver.rhs .= Δ
 #         solver(reuse_chol = true, assemble_f = false)
