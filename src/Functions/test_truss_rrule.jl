@@ -19,6 +19,7 @@ function ChainRulesCore.rrule(
     function truss_stress_pullback(Δ)
         #gradient will be the same size as elements, or stress itself.
         Δσ = Vector{Float64}(undef, length(σ))
+        u = u_fn(x)
         for e in 1:length(σ)
             celldofs!(global_dofs, dh, e)
             #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
@@ -27,9 +28,12 @@ function ChainRulesCore.rrule(
             _, dρe = get_ρ_dρ(x.x[e], penalty, xmin)
             celldofs!(global_dofs, dh, e)
             Keu = bcmatrix(Kes[e]) * u.u[global_dofs]
-            dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
+            dσdx_tmp[e] =  dot(Keu, solver.lhs[global_dofs])*u
         end 
-        return dσdx_tmp, NoTangent()
+        return nothing, Tangent{typeof(x)}(; dσdx_tmp)
     end
     return σ , truss_stress_pullback
 end
+
+
+test_rrule(ts, x0)
