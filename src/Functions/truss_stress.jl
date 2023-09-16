@@ -72,22 +72,23 @@ end
 #             = - K^-1 * [d(ρ_e)/d(x_e) * K_e * u]
 # d(u)/d(x_e)' * Δ = -d(ρ_e)/d(x_e) * u' * K_e * (K^-1 * Δ)
 # """
-# function ChainRulesCore.rrule(
-#     ts::TrussStress, x::PseudoDensities)
-#     @unpack σ, transf_matrices, u_fn = ts
-#     @unpack global_dofs, solver = u_fn
-#     @unpack penalty, problem, xmin = solver
-#     @unpack Kes = solver.elementinfo
-#     σ # u = ts(x)
-#     dh = getdh(problem)
+function ChainRulesCore.rrule(
+    ::typeof(ts), x::PseudoDensities)
+    #or?
+    ts::TrussStress, x::PseudoDensities)
+    @unpack σ, transf_matrices, u_fn = ts
+    @unpack global_dofs, solver = u_fn
+    @unpack penalty, problem, xmin = solver
+    @unpack Kes = solver.elementinfo
     
-#     # Forward-pass
-#     truss_stress = ts(x)
-#     n_dofs = length(global_dofs)
+    dh = getdh(problem)
     
-#     function truss_stress_pullback(Δ)
+    # Forward-pass
+    truss_stress = ts(x)
+    n_dofs = length(global_dofs)
+    function truss_stress_pullback(Δ)
 #         #gradient will be the same size as elements, or stress itself.
-#         Δσ = Vector{Float64}(undef, length(σ))
+        Δσ = Vector{Float64}(undef, length(σ))
 #         for e in 1:length(σ)
 #             celldofs!(global_dofs, dh, e)
 #             #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
@@ -98,10 +99,22 @@ end
 #             Keu = bcmatrix(Kes[e]) * u.u[global_dofs]
 #             dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
 #         end 
-#         return Δσ, NoTangent()
-#     end
-#     return σ , truss_stress_pullback
-# end
+
+    σ::AbstractVector{T} # stress vector, axial stress per cell
+    u_fn::Displacement
+    transf_matrices::AbstractVector{<:AbstractMatrix{T}}
+    fevals::Int
+    maxfevals::Int
+            Δ = Tangent{typeof(ts)}(;
+                σ = 
+                u_fn = 
+                transf_matrices =
+                fevals = NoTangent(),
+                maxfevals = NoTangent())
+        return Δ, NoTangent()
+    end
+    return σ , truss_stress_pullback
+end
 
 #     return truss_stress, Δ -> begin # v
 #         solver.rhs .= Δ
