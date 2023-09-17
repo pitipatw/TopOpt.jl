@@ -84,16 +84,18 @@ function constr1(x)
 end
 
 function constr2_min(x)
+    ae = x[1:ncells]
     xe = x[ncells+1:end]
     minσ = σmax.(xe)
-    σ = ts(PseudoDensities(xe))
+    σ = ts(PseudoDensities(ae))
     return σ .- minσ
 end
 
 function constr2_max(x)
+    ae = x[1:ncells]
     xe = x[ncells+1:end] 
     maxσ = σmin.(xe)   
-    σ = ts(PseudoDensities(xe))
+    σ = ts(PseudoDensities(ae))
     return σ.-maxσ
 end
 

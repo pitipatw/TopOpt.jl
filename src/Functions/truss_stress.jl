@@ -77,12 +77,13 @@ function ChainRulesCore.rrule(
     # Forward-pass
     σ = ts(x)
     u = u_fn(x)
-    n_dofs = length(global_dofs)
+    # n_dofs = length(global_dofs)
     getA(sp::TrussProblem) = [cs.A for cs in sp.truss_grid.crosssecs]
     As = getA(problem)
     function truss_stress_pullback(Δ)
 #         #gradient will be the same size as elements, or stress itself.
         Δσ = Vector{Float64}(undef, length(σ))
+        dudAs = jacobian(u, x)
         for e in 1:length(Δσ)
             celldofs!(global_dofs, dh, e)
             #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
@@ -90,7 +91,7 @@ function ChainRulesCore.rrule(
             # @show u[global_dofs]
             # @show transf_matrices[e]
             # @show (transf_matrices[e] * Kes[e]) / As[e]
-            Δσ[e] = norm((transf_matrices[e] * Kes[e]) / As[e] * u[global_dofs])
+            Δσ[e] = norm((transf_matrices[e] * Kes[e]) / As[e] * duAs[global_dofs])
         end
 #             _, dρe = get_ρ_dρ(x.x[e], penalty, xmin)
 #             celldofs!(global_dofs, dh, e)
@@ -98,11 +99,6 @@ function ChainRulesCore.rrule(
 #             dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
 #         end 
 
-    # σ::AbstractVector{T} # stress vector, axial stress per cell
-    # u_fn::Displacement
-    # transf_matrices::AbstractVector{<:AbstractMatrix{T}}
-    # fevals::Int
-    # maxfevals::Int
     return Tangent{typeof(ts)}(;
         σ = Δσ,
         u_fn = u ,
