@@ -17,7 +17,7 @@ problem = TrussProblem(
 xmin = 0.0001 # minimum density
 x0 = fill(0.5, ncells) # initial design
 p = 4.0 # penalty
-V = 0.1 # maximum volume fraction
+V = 0.4 # maximum volume fraction
 
 solver = FEASolver(Direct, problem; xmin=xmin)
 comp = TopOpt.Compliance(solver)

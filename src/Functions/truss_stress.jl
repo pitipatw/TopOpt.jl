@@ -62,6 +62,56 @@ function (ts::TrussStress{T})(x::PseudoDensities) where {T}
     return copy(σ)
 end
 
+
+function ChainRulesCore.rrule(
+    ts::TrussStress{T}, x::PseudoDensities) where {T}
+    #or?
+    # ts::TrussStress, x::PseudoDensities)
+    @unpack σ, transf_matrices, u_fn = ts
+    @unpack global_dofs, solver = u_fn
+    @unpack penalty, problem, xmin = solver
+    @unpack Kes = solver.elementinfo
+    # K = ak(Kes)
+    dh = problem.ch.dh
+    
+    # Forward-pass
+    σ = ts(x)
+    u = u_fn(x)
+    n_dofs = length(global_dofs)
+    getA(sp::TrussProblem) = [cs.A for cs in sp.truss_grid.crosssecs]
+    As = getA(problem)
+    function truss_stress_pullback(Δ)
+#         #gradient will be the same size as elements, or stress itself.
+        Δσ = Vector{Float64}(undef, length(σ))
+        for e in 1:length(Δσ)
+            celldofs!(global_dofs, dh, e)
+            #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
+            # @show global_dofs
+            # @show u[global_dofs]
+            # @show transf_matrices[e]
+            # @show (transf_matrices[e] * Kes[e]) / As[e]
+            Δσ[e] = norm((transf_matrices[e] * Kes[e]) / As[e] * u[global_dofs])
+        end
+#             _, dρe = get_ρ_dρ(x.x[e], penalty, xmin)
+#             celldofs!(global_dofs, dh, e)
+#             Keu = bcmatrix(Kes[e]) * u.u[global_dofs]
+#             dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
+#         end 
+
+    # σ::AbstractVector{T} # stress vector, axial stress per cell
+    # u_fn::Displacement
+    # transf_matrices::AbstractVector{<:AbstractMatrix{T}}
+    # fevals::Int
+    # maxfevals::Int
+    return Tangent{typeof(ts)}(;
+        σ = Δσ,
+        u_fn = u ,
+        transf_matrices = NoTangent(),
+        fevals = NoTangent(),
+        maxfevals = NoTangent()), NoTangent()
+end
+    return σ , truss_stress_pullback
+end
 # TODO complete
 # """
 # rrule for autodiff.
@@ -72,49 +122,49 @@ end
 #             = - K^-1 * [d(ρ_e)/d(x_e) * K_e * u]
 # d(u)/d(x_e)' * Δ = -d(ρ_e)/d(x_e) * u' * K_e * (K^-1 * Δ)
 # """
-function ChainRulesCore.rrule(
-    ::typeof(ts), x::PseudoDensities)
-    #or?
-    ts::TrussStress, x::PseudoDensities)
-    @unpack σ, transf_matrices, u_fn = ts
-    @unpack global_dofs, solver = u_fn
-    @unpack penalty, problem, xmin = solver
-    @unpack Kes = solver.elementinfo
+# function ChainRulesCore.rrule(
+#     ::typeof(ts), x::PseudoDensities)
+#     #or?
+#     ts::TrussStress, x::PseudoDensities)
+#     @unpack σ, transf_matrices, u_fn = ts
+#     @unpack global_dofs, solver = u_fn
+#     @unpack penalty, problem, xmin = solver
+#     @unpack Kes = solver.elementinfo
     
-    dh = getdh(problem)
+#     dh = getdh(problem)
     
-    # Forward-pass
-    truss_stress = ts(x)
-    n_dofs = length(global_dofs)
-    function truss_stress_pullback(Δ)
-#         #gradient will be the same size as elements, or stress itself.
-        Δσ = Vector{Float64}(undef, length(σ))
-#         for e in 1:length(σ)
-#             celldofs!(global_dofs, dh, e)
-#             #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
-#             Δσ[e] = Tangent{typeof(ts)}(; -(transf_matrices[e] * Kes[e])[1] / As[e])
+#     # Forward-pass
+#     truss_stress = ts(x)
+#     n_dofs = length(global_dofs)
+#     function truss_stress_pullback(Δ)
+# #         #gradient will be the same size as elements, or stress itself.
+#         Δσ = Vector{Float64}(undef, length(σ))
+# #         for e in 1:length(σ)
+# #             celldofs!(global_dofs, dh, e)
+# #             #σ[e] = -(transf_matrices[e] * Kes[e] * u.u[global_dofs])[1] / As[e]
+# #             Δσ[e] = Tangent{typeof(ts)}(; -(transf_matrices[e] * Kes[e])[1] / As[e])
 
-#             _, dρe = get_ρ_dρ(x.x[e], penalty, xmin)
-#             celldofs!(global_dofs, dh, e)
-#             Keu = bcmatrix(Kes[e]) * u.u[global_dofs]
-#             dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
-#         end 
+# #             _, dρe = get_ρ_dρ(x.x[e], penalty, xmin)
+# #             celldofs!(global_dofs, dh, e)
+# #             Keu = bcmatrix(Kes[e]) * u.u[global_dofs]
+# #             dσdx_tmp[e] = -dρe * dot(Keu, solver.lhs[global_dofs])
+# #         end 
 
-    σ::AbstractVector{T} # stress vector, axial stress per cell
-    u_fn::Displacement
-    transf_matrices::AbstractVector{<:AbstractMatrix{T}}
-    fevals::Int
-    maxfevals::Int
-            Δ = Tangent{typeof(ts)}(;
-                σ = 
-                u_fn = 
-                transf_matrices =
-                fevals = NoTangent(),
-                maxfevals = NoTangent())
-        return Δ, NoTangent()
-    end
-    return σ , truss_stress_pullback
-end
+#     σ::AbstractVector{T} # stress vector, axial stress per cell
+#     u_fn::Displacement
+#     transf_matrices::AbstractVector{<:AbstractMatrix{T}}
+#     fevals::Int
+#     maxfevals::Int
+#             Δ = Tangent{typeof(ts)}(;
+#                 σ = 
+#                 u_fn = 
+#                 transf_matrices =
+#                 fevals = NoTangent(),
+#                 maxfevals = NoTangent())
+#         return Δ, NoTangent()
+#     end
+#     return σ , truss_stress_pullback
+# end
 
 #     return truss_stress, Δ -> begin # v
 #         solver.rhs .= Δ
