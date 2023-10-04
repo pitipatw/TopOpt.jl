@@ -6,7 +6,7 @@ Es = vcat( [1e-5],f2e.(fc′) )
 
 f2g = x-> 0.5*sqrt(x)/5
 densities = [0.0, 0.5, 1.0] # for mass calc
-densities = vcat( [0.0], f2g.(fc′) )
+densities = vcat( [0.0], f2g.(fc′) )./0.2
 nmats = 3
 nmats = length(Es)
 nu = 0.3 # Poisson's ratio
@@ -58,7 +58,7 @@ Zygote.gradient(obj, y0)
 # mass constraint
 constr = y -> begin 
     _rhos = interp2(MultiMaterialVariables(y, nmats)) #rho is the density
-    return sum(_rhos.x) / ncells - 0.1 # elements have unit volumes, 0.4 is the target.
+    return sum(_rhos.x) / ncells - 0.2 # elements have unit volumes, 0.4 is the target.
 end
 
 # testing the mass constraint
@@ -84,7 +84,7 @@ y = res.minimizer
 # testing the solution
 @test constr(y) < 1e-6
 
-x = TopOpt.tounit(reshape(y, ncells, nmats - 1))
+x = TopOpt.tounit(reshape(y, ncells, nmats - 1))  #reshape into a matrix with rows of each elements, and columns of each material propabilities/
 sum(x[:, 2:3]) / size(x, 1) # the non-void elements as a ratio
 @test all(x -> isapprox(x, 1), sum(x; dims=2))
 
@@ -112,4 +112,5 @@ scatter!(ax1, map[:,2],map[:,1], color = colx)
 f2, ax ,hm = heatmap(map[:,2],map[:,1], colx)
 Colorbar(f1[1, 2])
 Colorbar(f2[:,end+1], hm)
+f2
 f1
