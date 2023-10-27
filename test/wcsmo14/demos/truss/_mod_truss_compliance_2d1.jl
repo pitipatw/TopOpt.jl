@@ -14,16 +14,7 @@ problem = TrussProblem(
     Val{:Linear}, node_points, elements, loads, fixities, mats, crosssecs
 )
 
-xmin = 0.0001 # minimum density
-x0 = fill(0.5, ncells) # initial design
-p = 4.0 # penalty
-V = 0.4 # maximum volume fraction
 
-solver = FEASolver(Direct, problem; xmin=xmin)
-comp = TopOpt.Compliance(solver)
-
-ts = TopOpt.TrussStress(solver)
-ts(PseudoDensities(x0))
 L = Vector{Float64}(undef, length(elements))
 for i in eachindex(elements)
     p1 = node_points[elements[i][1]]
@@ -34,6 +25,22 @@ for i in eachindex(elements)
     y2 = p2[2]
     L[i] = norm([x1-x2, y1-y2])
 end
+
+@show L
+@show node_points
+@show elements
+@show load_cases
+
+xmin = 0.0001 # minimum density
+x0 = fill(0.4, ncells) # initial design
+p = 5.0 # penalty
+V = 0.4 # maximum volume fraction
+
+solver = FEASolver(Direct, problem; xmin=xmin)
+comp = TopOpt.Compliance(solver)
+
+ts = TopOpt.TrussStress(solver)
+ts(PseudoDensities(x0))
 
 
 function obj(x)
@@ -57,6 +64,7 @@ TopOpt.setpenalty!(solver, p)
 
 @show obj(r.minimizer)
 @show constr(r.minimizer)
+@show (hcat(r.minimizer,ts(PseudoDensities(x0))))
 fig = visualize(
    problem; solver.u, topology = r.minimizer,
    default_exagg_scale=0.0

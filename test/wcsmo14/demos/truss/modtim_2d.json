@@ -123,10 +123,10 @@
         "1": {
             "ploads": [
                 {
-                    "node_ind": 5,
+                    "node_ind": 4,
                     "force": [
                         0,
-                        -1
+                        -10
                     ],
                     "loadcase": 1,
                     "force_unit": "kN"
@@ -139,7 +139,7 @@
                 {
                     "node_ind": 5,
                     "force": [
-                        -1,
+                        0,
                         -1
                     ],
                     "loadcase": 0,

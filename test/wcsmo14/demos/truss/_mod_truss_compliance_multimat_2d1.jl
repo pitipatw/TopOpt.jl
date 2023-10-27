@@ -1,8 +1,9 @@
 # module TrussComplianceDemo2D1
-
+using Revise
+using Zygote
 using TopOpt, LinearAlgebra, StatsFuns
-# using Makie, GLMakie
-# using TopOpt.TrussTopOptProblems.TrussVisualization: visualize
+using Makie, GLMakie
+using TopOpt.TrussTopOptProblems.TrussVisualization: visualize
 
 begin
     Etimber = 11
@@ -47,7 +48,7 @@ problem = TrussProblem(
 )
 
 xmin = 0.0001 # minimum density
-x0 = fill(0.5, 2*ncells) # initial design
+x0 = fill(0.6, 2*ncells) # initial design
 p = 4.0 # penalty
 V = 0.4 # maximum volume fraction
 
@@ -84,6 +85,7 @@ function constr1(x)
 end
 
 function constr2_min(x)
+    @show size(x)
     ae = x[1:ncells]
     xe = x[ncells+1:end]
     minσ = σmax.(xe)
@@ -106,6 +108,17 @@ function obj(x)
     return sum( ae.*le.*ρecc) 
 end
 
+
+
+x0 = rand(22)
+constr2_min(x0)
+g1 = Zygote.gradient(x -> sum(constr2_min(x)),x0)[1]
+using FiniteDifferences
+g2 = FiniteDifferences.grad(central_fdm(5, 1), x -> sum(constr2_min(x)), x0)[1]
+norm(g1-g2)
+
+
+
 m = Model(obj)
 addvar!(m, zeros(length(x0)), ones(length(x0)))
 Nonconvex.add_ineq_constraint!(m, constr1)
@@ -122,10 +135,10 @@ TopOpt.setpenalty!(solver, p)
 @show constr1(r.minimizer)
 @show constr2_max(r.minimizer)
 @show constr2_min(r.minimizer)
-# fig = visualize(
-#    problem; solver.u, topology = r.minimizer,
-#    default_exagg_scale=0.0
-# )
-# Makie.display(fig)
+fig = visualize(
+   problem; solver.u, topology = r.minimizer,
+   default_exagg_scale=0.0
+)
+Makie.display(fig)
 
 
